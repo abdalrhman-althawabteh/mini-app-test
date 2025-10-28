@@ -8,6 +8,17 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const WEBAPP_URL = process.env.WEBAPP_URL || 'http://localhost:3000';
 const PORT = process.env.PORT || 3000;
 
+// Validate environment variables
+if (!BOT_TOKEN) {
+  console.error('❌ ERROR: BOT_TOKEN environment variable is not set!');
+  console.error('Please set BOT_TOKEN in your Vercel environment variables.');
+}
+
+console.log('🔧 Configuration loaded:');
+console.log('  - BOT_TOKEN:', BOT_TOKEN ? `${BOT_TOKEN.substring(0, 10)}...` : 'NOT SET');
+console.log('  - WEBAPP_URL:', WEBAPP_URL);
+console.log('  - NODE_ENV:', process.env.NODE_ENV || 'development');
+
 // Initialize bot and express app
 const bot = new Telegraf(BOT_TOKEN);
 const app = express();
@@ -71,17 +82,26 @@ function validateInitData(initData, botToken) {
 // API endpoint to create payment invoice
 app.post('/api/create-invoice', async (req, res) => {
   try {
+    console.log('📥 Received invoice creation request');
     const { initData, amount } = req.body;
 
     if (!initData || !amount) {
+      console.error('❌ Missing required fields:', { hasInitData: !!initData, hasAmount: !!amount });
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    console.log('🔐 Validating initData...');
     // Validate initData
     const isValid = validateInitData(initData, BOT_TOKEN);
     if (!isValid) {
-      return res.status(401).json({ error: 'Invalid authentication data' });
+      console.error('❌ Invalid authentication data');
+      return res.status(401).json({
+        error: 'Invalid authentication data',
+        hint: 'Make sure the app is opened from Telegram and BOT_TOKEN is correctly set'
+      });
     }
+
+    console.log('✅ initData validated successfully');
 
     // Parse user info
     const urlParams = new URLSearchParams(initData);
@@ -91,6 +111,7 @@ app.post('/api/create-invoice', async (req, res) => {
     // Validate amount
     const starsAmount = parseInt(amount);
     if (isNaN(starsAmount) || starsAmount < 1 || starsAmount > 2500) {
+      console.error('❌ Invalid amount:', amount);
       return res.status(400).json({ error: 'Invalid amount. Must be between 1 and 2500 Stars' });
     }
 
@@ -101,7 +122,16 @@ app.post('/api/create-invoice', async (req, res) => {
       timestamp: Date.now()
     });
 
-    console.log(`Creating invoice for user ${user.id} (${user.first_name}) for ${starsAmount} Stars`);
+    console.log(`💳 Creating invoice for user ${user.id} (${user.first_name}) for ${starsAmount} Stars`);
+
+    // Check if bot token is available
+    if (!BOT_TOKEN) {
+      console.error('❌ BOT_TOKEN is not set!');
+      return res.status(500).json({
+        error: 'Server configuration error',
+        details: 'BOT_TOKEN environment variable is not set'
+      });
+    }
 
     // Create invoice link
     const invoiceLink = await bot.telegram.createInvoiceLink({
@@ -115,7 +145,8 @@ app.post('/api/create-invoice', async (req, res) => {
       }]
     });
 
-    console.log('Invoice link created:', invoiceLink);
+    console.log('✅ Invoice link created successfully');
+    console.log('🔗 Invoice link:', invoiceLink);
 
     res.json({
       success: true,
@@ -124,10 +155,16 @@ app.post('/api/create-invoice', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error creating invoice:', error);
+    console.error('❌ Error creating invoice:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      response: error.response?.description
+    });
     res.status(500).json({
       error: 'Failed to create invoice',
-      details: error.message
+      details: error.message,
+      telegramError: error.response?.description
     });
   }
 });
@@ -271,16 +308,17 @@ app.post(`/bot${BOT_TOKEN}`, (req, res) => {
 // Start the server
 async function startApp() {
   try {
-    // Start Express server
-    app.listen(PORT, () => {
-      console.log(`✅ Server running on port ${PORT}`);
-      console.log(`📱 Mini App URL: ${WEBAPP_URL}`);
-    });
-
     // For local development, use polling
     // For production (Vercel), webhooks will be used
     if (process.env.NODE_ENV !== 'production') {
       console.log('🔄 Starting bot in polling mode (development)');
+
+      // Start Express server only in development
+      app.listen(PORT, () => {
+        console.log(`✅ Server running on port ${PORT}`);
+        console.log(`📱 Mini App URL: ${WEBAPP_URL}`);
+      });
+
       await bot.launch();
 
       // Enable graceful stop
@@ -295,9 +333,16 @@ async function startApp() {
 
   } catch (error) {
     console.error('❌ Failed to start app:', error);
-    process.exit(1);
+    if (process.env.NODE_ENV !== 'production') {
+      process.exit(1);
+    }
   }
 }
 
-// Start the application
-startApp();
+// Start the application only in development
+if (process.env.NODE_ENV !== 'production') {
+  startApp();
+}
+
+// Export for Vercel serverless
+module.exports = app;
