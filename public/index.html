@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Stars Payment</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            padding: 0;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .star-icon {
+            font-size: 64px;
+            margin-bottom: 10px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--tg-theme-text-color, #000000);
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: var(--tg-theme-hint-color, #999999);
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--tg-theme-text-color, #000000);
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 16px;
+            font-size: 24px;
+            font-weight: 600;
+            border: 2px solid var(--tg-theme-button-color, #3390ec);
+            border-radius: 12px;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            text-align: center;
+            -webkit-appearance: none;
+            -moz-appearance: textfield;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: var(--tg-theme-button-color, #3390ec);
+            box-shadow: 0 0 0 3px rgba(51, 144, 236, 0.1);
+        }
+
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .star-suffix {
+            position: absolute;
+            right: 16px;
+            font-size: 24px;
+            pointer-events: none;
+        }
+
+        .quick-amounts {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .quick-amount-btn {
+            padding: 12px;
+            font-size: 16px;
+            font-weight: 500;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            border: 1px solid var(--tg-theme-button-color, #3390ec);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quick-amount-btn:active {
+            transform: scale(0.95);
+            background: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #ffffff);
+        }
+
+        .pay-button {
+            width: 100%;
+            padding: 18px;
+            font-size: 18px;
+            font-weight: 600;
+            background: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .pay-button:active {
+            transform: scale(0.98);
+            opacity: 0.9;
+        }
+
+        .pay-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .info-box {
+            background: rgba(51, 144, 236, 0.1);
+            border-left: 4px solid var(--tg-theme-button-color, #3390ec);
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .info-box p {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--tg-theme-text-color, #000000);
+            margin: 0;
+        }
+
+        .error-message {
+            background: #ff3b30;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: none;
+            font-size: 14px;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .user-info {
+            background: var(--tg-theme-bg-color, #ffffff);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            color: var(--tg-theme-hint-color, #999999);
+            text-align: center;
+        }
+
+        .user-info strong {
+            color: var(--tg-theme-text-color, #000000);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="star-icon">⭐</div>
+            <h1>Telegram Stars Payment</h1>
+            <div class="subtitle">Pay any amount you want in Stars</div>
+        </div>
+
+        <div id="userInfo" class="user-info" style="display: none;">
+            Welcome, <strong id="userName"></strong>!
+        </div>
+
+        <div id="errorMessage" class="error-message"></div>
+
+        <div class="card">
+            <div class="form-group">
+                <label for="amount">Enter Amount (Stars)</label>
+                <div class="input-wrapper">
+                    <input
+                        type="number"
+                        id="amount"
+                        min="1"
+                        max="2500"
+                        value="100"
+                        placeholder="100"
+                    >
+                    <span class="star-suffix">⭐</span>
+                </div>
+                <div class="quick-amounts">
+                    <button class="quick-amount-btn" onclick="setAmount(10)">10 ⭐</button>
+                    <button class="quick-amount-btn" onclick="setAmount(50)">50 ⭐</button>
+                    <button class="quick-amount-btn" onclick="setAmount(100)">100 ⭐</button>
+                    <button class="quick-amount-btn" onclick="setAmount(250)">250 ⭐</button>
+                    <button class="quick-amount-btn" onclick="setAmount(500)">500 ⭐</button>
+                    <button class="quick-amount-btn" onclick="setAmount(1000)">1000 ⭐</button>
+                </div>
+            </div>
+
+            <button class="pay-button" id="payButton" onclick="initiatePayment()">
+                <span id="buttonText">Pay with Stars ⭐</span>
+            </button>
+        </div>
+
+        <div class="info-box">
+            <p>
+                💡 This is a demo app to test Telegram Stars payments.
+                Enter any amount between 1 and 2500 Stars and complete the payment.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Telegram Web App
+        const tg = window.Telegram.WebApp;
+
+        // Initialize the app
+        tg.ready();
+        tg.expand();
+
+        // Apply Telegram theme colors
+        document.body.style.background = tg.backgroundColor || '#ffffff';
+
+        // Show user info if available
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            const user = tg.initDataUnsafe.user;
+            document.getElementById('userName').textContent = user.first_name;
+            document.getElementById('userInfo').style.display = 'block';
+            console.log('User:', user);
+        }
+
+        // Set amount from quick buttons
+        function setAmount(amount) {
+            document.getElementById('amount').value = amount;
+
+            // Haptic feedback
+            if (tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
+            }
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+
+            setTimeout(() => {
+                errorDiv.classList.remove('show');
+            }, 5000);
+
+            // Haptic feedback
+            if (tg.HapticFeedback) {
+                tg.HapticFeedback.notificationOccurred('error');
+            }
+        }
+
+        // Initiate payment
+        async function initiatePayment() {
+            const amount = parseInt(document.getElementById('amount').value);
+            const payButton = document.getElementById('payButton');
+            const buttonText = document.getElementById('buttonText');
+
+            // Validate amount
+            if (!amount || amount < 1 || amount > 2500) {
+                showError('Please enter a valid amount between 1 and 2500 Stars');
+                return;
+            }
+
+            // Check if we have initData
+            if (!tg.initData) {
+                showError('This app must be opened from Telegram');
+                return;
+            }
+
+            // Disable button and show loading
+            payButton.disabled = true;
+            buttonText.innerHTML = '<span class="loading"></span> Creating invoice...';
+
+            try {
+                // Call backend to create invoice
+                const response = await fetch('/api/create-invoice', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        initData: tg.initData,
+                        amount: amount
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to create invoice');
+                }
+
+                const data = await response.json();
+                console.log('Invoice created:', data);
+
+                // Open invoice with Telegram
+                buttonText.innerHTML = 'Opening payment...';
+
+                tg.openInvoice(data.invoiceLink, (status) => {
+                    console.log('Payment status:', status);
+
+                    // Re-enable button
+                    payButton.disabled = false;
+                    buttonText.textContent = 'Pay with Stars ⭐';
+
+                    if (status === 'paid') {
+                        // Success haptic feedback
+                        if (tg.HapticFeedback) {
+                            tg.HapticFeedback.notificationOccurred('success');
+                        }
+
+                        // Show success in Telegram alert
+                        tg.showAlert('Payment successful! Thank you! ✅');
+                    } else if (status === 'cancelled') {
+                        showError('Payment was cancelled');
+                    } else if (status === 'failed') {
+                        showError('Payment failed. Please try again.');
+                    } else if (status === 'pending') {
+                        showError('Payment is pending...');
+                    }
+                });
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError(error.message);
+
+                // Re-enable button
+                payButton.disabled = false;
+                buttonText.textContent = 'Pay with Stars ⭐';
+            }
+        }
+
+        // Allow Enter key to submit
+        document.getElementById('amount').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                initiatePayment();
+            }
+        });
+
+        // Log initialization
+        console.log('Telegram Web App initialized');
+        console.log('Platform:', tg.platform);
+        console.log('Version:', tg.version);
+        console.log('Init Data available:', !!tg.initData);
+    </script>
+</body>
+</html>
